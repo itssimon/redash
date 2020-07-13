@@ -86,7 +86,8 @@ class ElasticSearch2(BaseHTTPQueryRunner):
         for index_name in mappings_data:
             mappings[index_name] = {}
             index_mappings = mappings_data[index_name]
-            _parse_properties('', index_mappings['mappings']['properties'])
+            for m in index_mappings.get("mappings", {}):
+                _parse_properties('', index_mappings['mappings'][m]['properties'])
 
         return mappings
 
@@ -264,7 +265,7 @@ class XPackSQLElasticSearch(ElasticSearch2):
     def _parse_results(cls, result_fields, raw_result):
         error = raw_result.get('error')
         if error:
-            raise Exception(error['reason'])
+            raise Exception(error)
 
         rv = {
             'columns': [

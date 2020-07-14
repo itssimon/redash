@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from redash.query_runner.elasticsearch2 import ElasticSearch2, XPackSQLElasticSearch
+from redash.query_runner.elasticsearch import Elasticsearch, ElasticsearchXPackSQL
 
 
 class TestElasticSearch(TestCase):
@@ -48,7 +48,7 @@ class TestElasticSearch(TestCase):
                 'geo.long': 'integer'
             }
         }
-        self.assertDictEqual(ElasticSearch2._parse_mappings(mapping_data), expected)
+        self.assertDictEqual(Elasticsearch._parse_mappings(mapping_data), expected)
 
     def test_parse_aggregation(self):
         response = {
@@ -118,7 +118,7 @@ class TestElasticSearch(TestCase):
             ]
         }
         fields = ['group_by_state', 'group_by_state.doc_count']
-        self.assertDictEqual(ElasticSearch2._parse_results(fields, response), expected)
+        self.assertDictEqual(Elasticsearch._parse_results(fields, response), expected)
 
     def test_parse_sub_aggregation(self):
         response = {
@@ -186,7 +186,7 @@ class TestElasticSearch(TestCase):
             ]
         }
         fields = ['group_by_state', 'group_by_state.average_balance.value']
-        self.assertDictEqual(ElasticSearch2._parse_results(fields, response), expected)
+        self.assertDictEqual(Elasticsearch._parse_results(fields, response), expected)
 
 
 class TestXPackSQL(TestCase):
@@ -264,4 +264,4 @@ class TestXPackSQL(TestCase):
                 }
             ]
         }
-        self.assertDictEqual(XPackSQLElasticSearch._parse_results(None, response), expected)
+        self.assertDictEqual(ElasticsearchXPackSQL._parse_results(None, response), expected)

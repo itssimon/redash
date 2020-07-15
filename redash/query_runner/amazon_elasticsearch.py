@@ -30,7 +30,6 @@ class AmazonElasticsearchServiceMixin:
                     "title": "Use AWS IAM Profile",
                 },
             },
-            "secret": ["secret_key"],
             "order": [
                 "url",
                 "region",
@@ -39,6 +38,7 @@ class AmazonElasticsearchServiceMixin:
                 "use_aws_iam_profile",
             ],
             "required": ["url", "region"],
+            "secret": ["secret_key"],
         }
 
     def get_aws_auth(self, configuration):

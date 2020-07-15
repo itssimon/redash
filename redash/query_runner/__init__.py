@@ -3,11 +3,7 @@ import logging
 from contextlib import ExitStack
 from dateutil import parser
 from functools import wraps
-import socket
-import ipaddress
-from urllib.parse import urlparse
 
-from six import text_type
 from sshtunnel import open_tunnel
 from redash import settings
 from redash.utils import json_loads

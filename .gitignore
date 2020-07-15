@@ -3,6 +3,7 @@ venv/
 .cache
 .coverage.*
 .coveralls.yml
+.mypy_cache
 .idea
 *.pyc
 .coverage

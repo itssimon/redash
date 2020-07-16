@@ -18,6 +18,7 @@ function getHoverInfoPattern(options) {
 
 function prepareBarSeries(series, options) {
   series.type = "bar";
+  series.cliponaxis = false;
   if (options.showDataLabels) {
     series.textposition = "inside";
   }
@@ -116,7 +117,7 @@ function prepareSeries(series, options, additionalOptions) {
   } catch (e) {
     customDataOptions = {};
   }
-  const plotlySeries = merge({
+  var plotlySeries = {
     visible: true,
     hoverinfo: hoverInfoPattern,
     x: xValues,
@@ -132,26 +133,32 @@ function prepareSeries(series, options, additionalOptions) {
     },
     yaxis: seriesYAxis,
     sourceData,
-  }, customDataOptions);
+  };
 
   additionalOptions = { ...additionalOptions, seriesColor, data };
 
   switch (seriesOptions.type) {
     case "column":
-      return prepareBarSeries(plotlySeries, options, additionalOptions);
+      plotlySeries = prepareBarSeries(plotlySeries, options, additionalOptions);
+      break;
     case "line":
-      return prepareLineSeries(plotlySeries, options, additionalOptions);
+      plotlySeries = prepareLineSeries(plotlySeries, options, additionalOptions);
+      break;
     case "area":
-      return prepareAreaSeries(plotlySeries, options, additionalOptions);
+      plotlySeries = prepareAreaSeries(plotlySeries, options, additionalOptions);
+      break;
     case "scatter":
-      return prepareScatterSeries(plotlySeries, options, additionalOptions);
+      plotlySeries = prepareScatterSeries(plotlySeries, options, additionalOptions);
+      break;
     case "bubble":
-      return prepareBubbleSeries(plotlySeries, options, additionalOptions);
+      plotlySeries = prepareBubbleSeries(plotlySeries, options, additionalOptions);
+      break;
     case "box":
-      return prepareBoxSeries(plotlySeries, options, additionalOptions);
-    default:
-      return plotlySeries;
+      plotlySeries = prepareBoxSeries(plotlySeries, options, additionalOptions);
+      break;
   }
+
+  return merge(plotlySeries, customDataOptions);
 }
 
 export default function prepareDefaultData(seriesList, options) {

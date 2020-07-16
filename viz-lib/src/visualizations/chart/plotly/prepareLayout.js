@@ -28,7 +28,7 @@ function calculateAxisRange(seriesList, minValue, maxValue) {
 
 function prepareXAxis(axisOptions, additionalOptions) {
   const axis = {
-    title: getAxisTitle(axisOptions),
+    title: {text: getAxisTitle(axisOptions)},
     type: getAxisScaleType(axisOptions),
     automargin: true,
   };
@@ -50,7 +50,7 @@ function prepareXAxis(axisOptions, additionalOptions) {
 
 function prepareYAxis(axisOptions, additionalOptions, data) {
   const axis = {
-    title: getAxisTitle(axisOptions),
+    title: {text: getAxisTitle(axisOptions)},
     type: getAxisScaleType(axisOptions),
     automargin: true,
   };
@@ -122,21 +122,26 @@ export default function prepareLayout(element, options, data) {
   } catch (e) {
     customLayoutOptions = {};
   }
-  const layout = merge({
+  var layout = {
     margin: { l: 10, r: 10, b: 5, t: 20, pad: 4 },
     // plot size should be at least 5x5px
     width: Math.max(5, Math.floor(element.offsetWidth)),
     height: Math.max(5, Math.floor(element.offsetHeight)),
     autosize: false,
     showlegend: has(options, "legend") ? options.legend.enabled : true,
-  }, customLayoutOptions);
+  };
 
   switch (options.globalSeriesType) {
     case "pie":
-      return preparePieLayout(layout, options, data);
+      layout = preparePieLayout(layout, options, data);
+      break;
     case "box":
-      return prepareBoxLayout(layout, options, data);
+      layout = prepareBoxLayout(layout, options, data);
+      break;
     default:
-      return prepareDefaultLayout(layout, options, data);
+      layout = prepareDefaultLayout(layout, options, data);
+      break;
   }
+
+  return merge(layout, customLayoutOptions);
 }

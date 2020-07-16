@@ -21,14 +21,14 @@ function prepareSeries(series, options, additionalOptions) {
     customDataOptions = {};
   }
 
-  const plotlySeries = merge({
+  var plotlySeries = {
     x: [],
     y: [],
     z: [],
     type: "heatmap",
     name: "",
     colorscale: colorScheme,
-  }, customDataOptions);
+  };
 
   plotlySeries.x = uniq(map(series.data, v => v.x));
   plotlySeries.y = uniq(map(series.data, v => v.y));
@@ -85,7 +85,7 @@ function prepareSeries(series, options, additionalOptions) {
     }
     plotlySeries.z.push(item);
   }
-
+  plotlySeries = merge(plotlySeries, customDataOptions);
   if (isFinite(zMax) && options.showDataLabels) {
     return [plotlySeries, dataLabels];
   }

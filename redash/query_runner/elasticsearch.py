@@ -45,15 +45,16 @@ class Elasticsearch(BaseHTTPQueryRunner):
         headers['Accept'] = 'application/json'
         if auth is None:
             auth = self.auth
-        return super().get_response(url, auth, http_method, headers=headers, verify=True, **kwargs)
-
-    def test_connection(self) -> None:
-        _, error = self.get_response("/_cluster/health")
+        response, error = super().get_response(url, auth, http_method, headers=headers, verify=True, **kwargs)
         if error is not None:
             raise Exception(error)
+        return response, error
+
+    def test_connection(self) -> None:
+        self.get_response("/_cluster/health")
 
     def get_schema(self, *args, **kwargs) -> List[Dict[str, Any]]:
-        response, error = self.get_response('/_mappings')
+        response, _ = self.get_response('/_mappings')
         mappings = self._parse_mappings(response.json())
         schema = {}
         for name, columns in mappings.items():

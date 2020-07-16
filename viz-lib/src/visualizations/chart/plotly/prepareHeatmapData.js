@@ -1,4 +1,4 @@
-import { map, max, uniq, sortBy, flatten, find } from "lodash";
+import { map, max, merge, uniq, sortBy, flatten, find } from "lodash";
 import { createNumberFormatter } from "@/lib/value-format";
 
 const defaultColorScheme = [
@@ -15,14 +15,20 @@ const defaultColorScheme = [
 function prepareSeries(series, options, additionalOptions) {
   const { colorScheme, formatNumber } = additionalOptions;
 
-  const plotlySeries = {
+  try {
+    var customDataOptions = JSON.parse(options.customDataOptionsJson);
+  } catch (e) {
+    customDataOptions = {};
+  }
+
+  const plotlySeries = merge({
     x: [],
     y: [],
     z: [],
     type: "heatmap",
     name: "",
     colorscale: colorScheme,
-  };
+  }, customDataOptions);
 
   plotlySeries.x = uniq(map(series.data, v => v.x));
   plotlySeries.y = uniq(map(series.data, v => v.y));

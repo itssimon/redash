@@ -12,7 +12,7 @@ const DEFAULT_OPTIONS = {
   seriesOptions: {},
   valuesOptions: {},
   columnMapping: {},
-  direction: { type: "counterclockwise" },
+  direction: { type: "clockwise" },
   sizemode: "diameter",
   coefficient: 1,
   customDataOptionsJson: "{}",

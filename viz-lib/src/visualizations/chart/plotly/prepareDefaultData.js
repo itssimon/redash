@@ -1,4 +1,4 @@
-import { isNil, extend, each, includes, map, sortBy } from "lodash";
+import { isNil, extend, each, includes, map, merge, sortBy } from "lodash";
 import chooseTextColorForBackground from "@/lib/chooseTextColorForBackground";
 import { ColorPaletteArray } from "@/visualizations/ColorPalette";
 import { cleanNumber, normalizeValue, getSeriesAxis } from "./utils";
@@ -111,7 +111,12 @@ function prepareSeries(series, options, additionalOptions) {
     yErrorValues.push(yError);
   });
 
-  const plotlySeries = {
+  try {
+    var customDataOptions = JSON.parse(options.customDataOptionsJson);
+  } catch (e) {
+    customDataOptions = {};
+  }
+  const plotlySeries = merge({
     visible: true,
     hoverinfo: hoverInfoPattern,
     x: xValues,
@@ -127,7 +132,7 @@ function prepareSeries(series, options, additionalOptions) {
     },
     yaxis: seriesYAxis,
     sourceData,
-  };
+  }, customDataOptions);
 
   additionalOptions = { ...additionalOptions, seriesColor, data };
 

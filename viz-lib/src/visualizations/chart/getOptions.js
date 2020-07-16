@@ -15,6 +15,8 @@ const DEFAULT_OPTIONS = {
   direction: { type: "counterclockwise" },
   sizemode: "diameter",
   coefficient: 1,
+  customDataOptionsJson: "{}",
+  customLayoutOptionsJson: "{}",
 
   // showDataLabels: false, // depends on chart type
   numberFormat: "0,0[.]00000",

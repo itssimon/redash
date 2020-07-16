@@ -1,4 +1,4 @@
-import { filter, has, isNumber, isObject, isUndefined, map, max, min } from "lodash";
+import { filter, has, isNumber, isObject, isUndefined, map, max, min, merge } from "lodash";
 import { getPieDimensions } from "./preparePieData";
 
 function getAxisTitle(axis) {
@@ -117,14 +117,19 @@ function prepareBoxLayout(layout, options, data) {
 }
 
 export default function prepareLayout(element, options, data) {
-  const layout = {
+  try {
+    var customLayoutOptions = JSON.parse(options.customLayoutOptionsJson);
+  } catch (e) {
+    customLayoutOptions = {};
+  }
+  const layout = merge({
     margin: { l: 10, r: 10, b: 5, t: 20, pad: 4 },
     // plot size should be at least 5x5px
     width: Math.max(5, Math.floor(element.offsetWidth)),
     height: Math.max(5, Math.floor(element.offsetHeight)),
     autosize: false,
     showlegend: has(options, "legend") ? options.legend.enabled : true,
-  };
+  }, customLayoutOptions);
 
   switch (options.globalSeriesType) {
     case "pie":

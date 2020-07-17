@@ -2,7 +2,7 @@ import { filter, has, isNumber, isObject, isUndefined, map, max, min, merge } fr
 import { getPieDimensions } from "./preparePieData";
 
 function getAxisTitle(axis) {
-  return isObject(axis.title) ? axis.title.text : null;
+  return isObject(axis.title) ? "<b>" + axis.title.text + "</b>" : null;
 }
 
 function getAxisScaleType(axis) {
@@ -28,7 +28,7 @@ function calculateAxisRange(seriesList, minValue, maxValue) {
 
 function prepareXAxis(axisOptions, additionalOptions) {
   const axis = {
-    title: {text: getAxisTitle(axisOptions)},
+    title: {text: getAxisTitle(axisOptions), font: {size: 10}},
     type: getAxisScaleType(axisOptions),
     automargin: true,
   };
@@ -50,7 +50,7 @@ function prepareXAxis(axisOptions, additionalOptions) {
 
 function prepareYAxis(axisOptions, additionalOptions, data) {
   const axis = {
-    title: {text: getAxisTitle(axisOptions)},
+    title: {text: getAxisTitle(axisOptions), font: {size: 10}},
     type: getAxisScaleType(axisOptions),
     automargin: true,
   };

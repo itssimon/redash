@@ -1,6 +1,6 @@
 export default {
-  columns: 6, // grid columns count
-  rowHeight: 50, // grid row height (incl. bottom padding)
+  columns: 12, // grid columns count
+  rowHeight: 65, // grid row height (incl. bottom padding)
   margins: 15, // widget margins
   mobileBreakPoint: 800,
   // defaults for widgets

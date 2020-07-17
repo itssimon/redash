@@ -94,8 +94,9 @@ function prepareDefaultLayout(layout, options, data) {
   const y2Series = data.filter(s => s.yaxis === "y2");
 
   layout.xaxis = prepareXAxis(options.xAxis, options);
-
   layout.yaxis = prepareYAxis(options.yAxis[0], options, ySeries);
+  layout.margin = {l: 50, r: 50};
+
   if (y2Series.length > 0) {
     layout.yaxis2 = prepareYAxis(options.yAxis[1], options, y2Series);
     layout.yaxis2.overlaying = "y";

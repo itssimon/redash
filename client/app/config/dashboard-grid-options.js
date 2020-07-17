@@ -4,7 +4,7 @@ export default {
   margins: 15, // widget margins
   mobileBreakPoint: 800,
   // defaults for widgets
-  defaultSizeX: 3,
+  defaultSizeX: 6,
   defaultSizeY: 3,
   minSizeX: 1,
   maxSizeX: 12,

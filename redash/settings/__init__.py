@@ -491,7 +491,10 @@ KYLIN_ACCEPT_PARTIAL = parse_boolean(
 # sqlparse
 SQLPARSE_FORMAT_OPTIONS = {
     "reindent": parse_boolean(os.environ.get("SQLPARSE_FORMAT_REINDENT", "true")),
+    "indent_width": int(os.environ.get("SQLPARSE_FORMAT_INDENT_WIDTH", "4")),
+    "indent_columns": parse_boolean(os.environ.get("SQLPARSE_FORMAT_INDENT_COLUMNS", "true")),
     "keyword_case": os.environ.get("SQLPARSE_FORMAT_KEYWORD_CASE", "upper"),
+    "use_space_around_operators": parse_boolean(os.environ.get("SQLPARSE_FORMAT_USE_SPACE_AROUND_OPERATORS", "true")),
 }
 
 # requests

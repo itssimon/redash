@@ -123,7 +123,6 @@ class Elasticsearch(BaseHTTPQueryRunner):
         def collect_value(row, key, value):
             if result_fields and key not in result_fields:
                 return
-
             add_column_if_needed(key, value)
             row[key] = value
 
@@ -138,14 +137,17 @@ class Elasticsearch(BaseHTTPQueryRunner):
                     else:
                         collect_value(row, agg_key, data['key'])
                     continue
-                if isinstance(item, (str, int, float)):
+                if isinstance(item, (str, int, float)) and key != 'doc_count':
                     collect_value(row, agg_key + '.' + key, item)
                 elif isinstance(item, dict):
                     if 'buckets' not in item:
                         for sub_key, sub_item in item.items():
+                            composite_key = agg_key + '.' + key
+                            if sub_key != 'value':
+                                composite_key += '.' + sub_key
                             collect_value(
                                 row,
-                                agg_key + '.' + key + '.' + sub_key,
+                                composite_key,
                                 sub_item,
                             )
                     else:
@@ -238,29 +240,8 @@ class ElasticsearchOpenDistroSQL(Elasticsearch):
 
     def _build_query(self, query: str) -> Tuple[Dict[str, Any], str, Optional[Set[str]]]:
         sql_query = {'query': query}
-        sql_query_url = '/_opendistro/_sql'
+        sql_query_url = '/_opendistro/_sql?format=json'
         return sql_query, sql_query_url, None
-
-    def _parse_query_results(self, result: Dict[str, Any], result_fields: Optional[Set[str]] = None) -> Dict[str, Any]:
-        if 'error' in result:
-            raise Exception(self._parse_error(result['error']))
-        return {
-            'columns': [
-                {
-                    'name': c['name'],
-                    'friendly_name': c['name'],
-                    'type': ELASTICSEARCH_TYPES_MAPPING.get(c['type'], TYPE_STRING)
-                }
-                for c in result['schema']
-            ],
-            'rows': [
-                {
-                    result['schema'][i]['name']: value
-                    for i, value in enumerate(row)
-                }
-                for row in result['datarows']
-            ]
-        }
 
 
 register(Elasticsearch)

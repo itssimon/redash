@@ -87,7 +87,7 @@ class QueriesList extends React.Component {
       className: "p-r-0",
       width: "1%",
     }),
-    Columns.custom.sortable((text, item) => item.data_source_name, {
+    Columns.custom((text, item) => item.data_source_name, {
       title: "Data Source",
       field: "data_source_name",
     }),
@@ -116,9 +116,6 @@ class QueriesList extends React.Component {
 
   render() {
     const { controller } = this.props;
-    console.log(controller.pageItems);
-    console.log(controller.orderByField);
-    console.log(controller.orderByReverse);
     return (
       <div className="page-queries-list">
         <div className="container">

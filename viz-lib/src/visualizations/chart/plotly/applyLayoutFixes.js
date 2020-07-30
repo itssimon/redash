@@ -83,7 +83,7 @@ function placeLegendBelowPlot(plotlyElement, layout, updatePlot) {
           result = result || b;
           return {
             top: Math.min(result.top, b.top),
-            bottom: Math.max(result.bottom, b.bottom),
+            bottom: Math.max(result.bottom, b.bottom) + 5,
           };
         },
         null

@@ -244,5 +244,49 @@ class ElasticsearchOpenDistroSQL(Elasticsearch):
         return sql_query, sql_query_url, None
 
 
+class ElasticsearchXPackSQL(Elasticsearch):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.syntax = 'sql'
+
+    @classmethod
+    def name(cls):
+        return "Elasticsearch (X-Pack SQL)"
+
+    @classmethod
+    def type(cls):
+        return "elasticsearch_xpack_sql"
+
+    def _build_query(self, query: str) -> Tuple[Dict[str, Any], str, Optional[Set[str]]]:
+        sql_query = {'query': query}
+        sql_query_url = '/_sql?format=json'
+        return sql_query, sql_query_url, None
+
+    def _parse_query_results(self, result: Dict[str, Any], result_fields: Optional[Set[str]] = None) -> Dict[str, Any]:
+        if 'error' in result:
+            raise Exception(self._parse_error(result['error']))
+        columns = [
+            {
+                'name': column['name'],
+                'friendly_name': column['name'],
+                'type': ELASTICSEARCH_TYPES_MAPPING.get(column['type'], 'string'),
+            }
+            for column in result['columns']
+        ]
+        rows = [
+            {
+                column['name']: value
+                for column, value in zip(columns, row)
+            }
+            for row in result['rows']
+        ]
+        return {
+            'columns': columns,
+            'rows': rows,
+        }
+
+
 register(Elasticsearch)
 register(ElasticsearchOpenDistroSQL)
+register(ElasticsearchXPackSQL)

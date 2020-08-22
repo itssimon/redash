@@ -23,10 +23,7 @@ class CustomPrint(object):
     def write(self, text):
         if self.enabled:
             if text and text.strip():
-                log_line = "[{0}] {1}".format(
-                    datetime.datetime.utcnow().isoformat(), text
-                )
-                self.lines.append(log_line)
+                self.lines.append(text)
 
     def enable(self):
         self.enabled = True
@@ -34,8 +31,11 @@ class CustomPrint(object):
     def disable(self):
         self.enabled = False
 
-    def __call__(self):
-        return self
+    def __call__(self, *args):
+         return self
+
+    def _call_print(self, *args, **kwargs):
+        print(*args, file=self)
 
 
 class Python(BaseQueryRunner):

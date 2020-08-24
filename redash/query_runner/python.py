@@ -18,6 +18,28 @@ from RestrictedPython.Guards import safe_builtins
 logger = logging.getLogger(__name__)
 
 
+# Disable reading and writing from/to files using pandas and numpy
+def blocked_read_write_func(*args, **kwargs):
+    raise RuntimeError("Blocked read/write operation")
+
+
+pd.io.parsers._read = lambda *args, **kwargs: ''
+for k, v in pd.__dict__.items():
+    if k.startswith('read_') and callable(v):
+        setattr(pd, k, blocked_read_write_func)
+for k, v in pd.core.generic.NDFrame.__dict__.items():
+    if k.startswith('to_') and callable(v):
+        setattr(pd.core.generic.NDFrame, k, blocked_read_write_func)
+for k, v in pd.DataFrame.__dict__.items():
+    if k.startswith('to_') and callable(v) and k not in {'to_dict', 'to_numpy', 'to_records'}:
+        setattr(pd.DataFrame, k, blocked_read_write_func)
+for k, v in pd.Series.__dict__.items():
+    if k.startswith('to_') and callable(v) and k not in {'to_dict', 'to_list', 'to_frame', 'to_numpy', 'to_timestamp'}:
+        setattr(pd.Series, k, blocked_read_write_func)
+for k in ('load', 'loadtxt', 'save', 'savetxt', 'savez', 'savez_compressed', 'genfromtxt', 'fromregex', 'fromfile', 'memmap'):
+    setattr(np, k, blocked_read_write_func)
+
+
 class CustomPrint(object):
     """CustomPrint redirect "print" calls to be sent as "log" on the result object."""
 

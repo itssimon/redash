@@ -23,7 +23,7 @@ def blocked_read_write_func(*args, **kwargs):
     raise RuntimeError("Blocked read/write operation")
 
 
-pd.io.parsers._read = lambda *args, **kwargs: ''
+pd.io.parsers._read = blocked_read_write_func
 for k, v in pd.__dict__.items():
     if k.startswith('read_') and callable(v):
         setattr(pd, k, blocked_read_write_func)

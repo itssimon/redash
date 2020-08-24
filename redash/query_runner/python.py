@@ -1,8 +1,13 @@
 import datetime
 import importlib
 import logging
+import math
 import sys
+from typing import Any, Dict, List, Union
 
+import numpy as np
+import pandas as pd
+import scipy
 from redash.query_runner import *
 from redash.utils import json_dumps, json_loads
 from redash import models
@@ -67,6 +72,7 @@ class Python(BaseQueryRunner):
         "list",
         "dict",
         "bool",
+        "zip",
     )
 
     @classmethod
@@ -91,14 +97,21 @@ class Python(BaseQueryRunner):
 
         self.syntax = "python"
 
-        self._allowed_modules = {}
-        self._script_locals = {"result": {"rows": [], "columns": [], "log": []}}
+        self._allowed_modules = {
+            "math": math,
+            "pandas": pd,
+            "numpy": np,
+            "scipy": scipy,
+        }
+        self._script_locals = {"result": pd.DataFrame()}
         self._enable_print_log = True
         self._custom_print = CustomPrint()
 
         if self.configuration.get("allowedImportModules", None):
             for item in self.configuration["allowedImportModules"].split(","):
-                self._allowed_modules[item] = None
+                item = item.strip()
+                if item not in self._allowed_modules:
+                    self._allowed_modules[item] = None
 
         if self.configuration.get("additionalModulesPaths", None):
             for p in self.configuration["additionalModulesPaths"].split(","):
@@ -137,40 +150,24 @@ class Python(BaseQueryRunner):
         return iter(obj)
 
     @staticmethod
-    def add_result_column(result, column_name, friendly_name, column_type):
-        """Helper function to add columns inside a Python script running in Redash in an easier way
+    def get_source_schema(data_source_name_or_id: Union[str, int]):
+        """Get schema from specific data source.
 
-        Parameters:
-        :result dict: The result dict
-        :column_name string: Name of the column, which should be consisted of lowercase latin letters or underscore.
-        :friendly_name string: Name of the column for display
-        :column_type string: Type of the column. Check supported data types for details.
+        :param data_source_name_or_id: string|integer: Name or ID of the data source
+        :return:
         """
-        if column_type not in SUPPORTED_COLUMN_TYPES:
-            raise Exception("'{0}' is not a supported column type".format(column_type))
-
-        if "columns" not in result:
-            result["columns"] = []
-
-        result["columns"].append(
-            {"name": column_name, "friendly_name": friendly_name, "type": column_type}
-        )
+        try:
+            if type(data_source_name_or_id) == int:
+                data_source = models.DataSource.get_by_id(data_source_name_or_id)
+            else:
+                data_source = models.DataSource.get_by_name(data_source_name_or_id)
+        except models.NoResultFound:
+            raise Exception("Wrong data source name/id: %s." % data_source_name_or_id)
+        schema = data_source.query_runner.get_schema()
+        return schema
 
     @staticmethod
-    def add_result_row(result, values):
-        """Helper function to add one row to results set.
-
-        Parameters:
-        :result dict: The result dict
-        :values dict: One row of result in dict. The key should be one of the column names. The value is the value of the column in this row.
-        """
-        if "rows" not in result:
-            result["rows"] = []
-
-        result["rows"].append(values)
-
-    @staticmethod
-    def execute_query(data_source_name_or_id, query):
+    def execute_query(data_source_name_or_id: Union[str, int], query: str) -> pd.DataFrame:
         """Run query from specific data source.
 
         Parameters:
@@ -191,27 +188,10 @@ class Python(BaseQueryRunner):
             raise Exception(error)
 
         # TODO: allow avoiding the JSON dumps/loads in same process
-        return json_loads(data)
+        return Python.df_from_result(json_loads(data))
 
     @staticmethod
-    def get_source_schema(data_source_name_or_id):
-        """Get schema from specific data source.
-
-        :param data_source_name_or_id: string|integer: Name or ID of the data source
-        :return:
-        """
-        try:
-            if type(data_source_name_or_id) == int:
-                data_source = models.DataSource.get_by_id(data_source_name_or_id)
-            else:
-                data_source = models.DataSource.get_by_name(data_source_name_or_id)
-        except models.NoResultFound:
-            raise Exception("Wrong data source name/id: %s." % data_source_name_or_id)
-        schema = data_source.query_runner.get_schema()
-        return schema
-
-    @staticmethod
-    def get_query_result(query_id):
+    def get_query_result(query_id: int) -> pd.DataFrame:
         """Get result of an existing query.
 
         Parameters:
@@ -222,13 +202,86 @@ class Python(BaseQueryRunner):
         except models.NoResultFound:
             raise Exception("Query id %s does not exist." % query_id)
 
-        if query.latest_query_data is None:
+        if query.latest_query_data is None or query.latest_query_data.data is None:
             raise Exception("Query does not have results yet.")
 
-        if query.latest_query_data.data is None:
-            raise Exception("Query does not have results yet.")
+        return Python.df_from_result(query.latest_query_data.data)
 
-        return query.latest_query_data.data
+    @staticmethod
+    def df_from_result(result: Dict[str, List[Dict[str, Any]]]) -> pd.DataFrame:
+        df = pd.DataFrame.from_records(result["rows"])
+        column_types = {c["name"]: c["type"] for c in result["columns"]}
+
+        for c in df.columns:
+            t = column_types[c]
+            if t == TYPE_DATETIME or t == TYPE_DATE:
+                df[c] = pd.to_datetime(df[c])
+            elif t == TYPE_BOOLEAN:
+                df[c] = df[c].astype("boolean")
+            elif t == TYPE_INTEGER:
+                df[c] = df[c].astype("Int64")
+            elif t == TYPE_STRING:
+                df[c] = df[c].astype("string")
+
+        return df
+
+    @staticmethod
+    def result_from_df(df: pd.DataFrame) -> Dict[str, List[Dict[str, Any]]]:
+        df = df.copy()
+        columns = []
+
+        for c, t in df.dtypes.iteritems():
+            t = str(t).lower()
+            column_type = "unknown"
+            if t == "object" and df[c].apply(lambda x: isinstance(x, bool) or pd.isna(x)).all():
+                df[c] = df[c].astype("boolean")
+                column_type = TYPE_BOOLEAN
+            elif t == "object" and df[c].apply(lambda x: isinstance(x, datetime.date) or pd.isna(x)).all():
+                column_type = TYPE_DATE
+            elif t.startswith("int"):
+                df[c] = df[c].astype("Int64")
+                column_type = TYPE_INTEGER
+            elif t.startswith("uint"):
+                column_type = TYPE_INTEGER
+            elif t.startswith("float") and df[c].apply(lambda x: x.is_integer() or pd.isna(x)).all():
+                df[c] = df[c].astype("Int64")
+                column_type = TYPE_INTEGER
+            elif t.startswith("float"):
+                column_type = TYPE_FLOAT
+            elif t.startswith("bool"):
+                column_type = TYPE_BOOLEAN
+            elif t.startswith("datetime"):
+                column_type = TYPE_DATETIME
+            elif t.startswith("timedelta"):
+                df[c] = df[c].dt.total_seconds()
+                column_type = TYPE_FLOAT
+            elif t.startswith("period"):
+                df[c] = df[c].dt.to_timestamp()
+                column_type = TYPE_DATETIME
+            else:
+                df[c] = df[c].apply(lambda x: str(x) if pd.notna(x) else None).astype("string")
+                column_type = TYPE_STRING
+            columns.append({"name": str(c), "friendly_name": str(c), "type": column_type})
+
+        def convert_value(v: Any) -> Any:
+            if pd.isna(v):
+                return None
+            elif isinstance(v, np.integer):
+                return int(v)
+            elif isinstance(v, np.floating):
+                return float(v)
+            elif isinstance(v, pd.Timestamp):
+                return v.to_pydatetime()
+            elif isinstance(v, pd.Period):
+                return v.to_timestamp().to_pydatetime()
+            elif isinstance(v, pd.Interval):
+                return str(v)
+            return v
+
+        return {
+            "columns": columns,
+            "rows": [{str(k): convert_value(v) for k, v in r.items()} for r in df.to_dict(orient="records")],
+        }
 
     def get_current_user(self):
         return self._current_user.to_dict()
@@ -265,10 +318,16 @@ class Python(BaseQueryRunner):
             restricted_globals["get_source_schema"] = self.get_source_schema
             restricted_globals["get_current_user"] = self.get_current_user
             restricted_globals["execute_query"] = self.execute_query
-            restricted_globals["add_result_column"] = self.add_result_column
-            restricted_globals["add_result_row"] = self.add_result_row
             restricted_globals["disable_print_log"] = self._custom_print.disable
             restricted_globals["enable_print_log"] = self._custom_print.enable
+
+            # Add commonly used imports
+            restricted_globals["math"] = math
+            restricted_globals["pd"] = pd
+            restricted_globals["np"] = np
+            restricted_globals["pandas"] = pd
+            restricted_globals["numpy"] = np
+            restricted_globals["scipy"] = scipy
 
             # Supported data types
             restricted_globals["TYPE_DATETIME"] = TYPE_DATETIME
@@ -284,11 +343,14 @@ class Python(BaseQueryRunner):
 
             exec(code, restricted_globals, self._script_locals)
 
-            result = self._script_locals["result"]
+            if not isinstance(self._script_locals["result"], pd.DataFrame):
+                raise ValueError("result is not a pandas DataFrame")
+
+            result = self.result_from_df(self._script_locals["result"])
             result["log"] = self._custom_print.lines
             json_data = json_dumps(result)
         except Exception as e:
-            error = str(type(e)) + " " + str(e)
+            error = type(e).__name__ + ": " + str(e)
             json_data = None
 
         return json_data, error

@@ -95,6 +95,7 @@ class Python(BaseQueryRunner):
         "dict",
         "bool",
         "zip",
+        "type",
     )
 
     @classmethod

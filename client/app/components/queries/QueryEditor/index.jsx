@@ -141,7 +141,7 @@ const QueryEditor = React.forwardRef(function(
         editorProps={editorProps}
         width="100%"
         height="100%"
-        tabSize={2}
+        tabSize={syntax == "python" ? 4 : 2}
         setOptions={editorOptions}
         showPrintMargin={false}
         wrapEnabled={false}

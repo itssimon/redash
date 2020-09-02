@@ -119,14 +119,12 @@ class Python(BaseQueryRunner):
         super(Python, self).__init__(configuration)
 
         self.syntax = "python"
-
         self._allowed_modules = {
             "math": math,
             "pandas": pd,
             "numpy": np,
             "scipy": scipy,
         }
-        self._script_locals = {"result": pd.DataFrame()}
         self._enable_print_log = True
         self._custom_print = CustomPrint()
 
@@ -317,59 +315,51 @@ class Python(BaseQueryRunner):
 
         try:
             error = None
-
             code = compile_restricted(query, "<string>", "exec")
 
             builtins = safe_builtins.copy()
-            builtins["_write_"] = self.custom_write
-            builtins["__import__"] = self.custom_import
-            builtins["_getattr_"] = getattr
-            builtins["getattr"] = getattr
-            builtins["_setattr_"] = setattr
-            builtins["setattr"] = setattr
-            builtins["_getitem_"] = self.custom_get_item
-            builtins["_getiter_"] = self.custom_get_iter
-            builtins["_print_"] = self._custom_print
+            builtins.update({
+                "_write_": self.custom_write,
+                "__import__": self.custom_import,
+                "_getattr_": getattr,
+                "getattr": getattr,
+                "_setattr_": setattr,
+                "setattr": setattr,
+                "_getitem_": self.custom_get_item,
+                "_getiter_": self.custom_get_iter,
+                "_print_": self._custom_print,
+            })
+            builtins.update({name: __builtins__[name] for name in self.safe_builtins})
 
-            # Layer in our own additional set of builtins that we have
-            # considered safe.
-            for key in self.safe_builtins:
-                builtins[key] = __builtins__[key]
+            restricted_globals = {
+                "__builtins__": builtins,
+                "get_query_result": self.get_query_result,
+                "get_source_schema": self.get_source_schema,
+                "get_current_user": self.get_current_user,
+                "execute_query": self.execute_query,
 
-            restricted_globals = dict(__builtins__=builtins)
-            restricted_globals["get_query_result"] = self.get_query_result
-            restricted_globals["get_source_schema"] = self.get_source_schema
-            restricted_globals["get_current_user"] = self.get_current_user
-            restricted_globals["execute_query"] = self.execute_query
-            restricted_globals["disable_print_log"] = self._custom_print.disable
-            restricted_globals["enable_print_log"] = self._custom_print.enable
+                # Imports
+                "math": math,
+                "pd": pd,
+                "np": np,
+                "pandas": pd,
+                "numpy": np,
+                "scipy": scipy,
 
-            # Add commonly used imports
-            restricted_globals["math"] = math
-            restricted_globals["pd"] = pd
-            restricted_globals["np"] = np
-            restricted_globals["pandas"] = pd
-            restricted_globals["numpy"] = np
-            restricted_globals["scipy"] = scipy
-
-            # Supported data types
-            restricted_globals["TYPE_DATETIME"] = TYPE_DATETIME
-            restricted_globals["TYPE_BOOLEAN"] = TYPE_BOOLEAN
-            restricted_globals["TYPE_INTEGER"] = TYPE_INTEGER
-            restricted_globals["TYPE_STRING"] = TYPE_STRING
-            restricted_globals["TYPE_DATE"] = TYPE_DATE
-            restricted_globals["TYPE_FLOAT"] = TYPE_FLOAT
+                # Prepare empty result
+                "result": pd.DataFrame(),
+            }
 
             # TODO: Figure out the best way to have a timeout on a script
             #       One option is to use ETA with Celery + timeouts on workers
             #       And replacement of worker process every X requests handled.
 
-            exec(code, restricted_globals, self._script_locals)
+            exec(code, restricted_globals)
 
-            if not isinstance(self._script_locals["result"], pd.DataFrame):
+            if not isinstance(restricted_globals["result"], pd.DataFrame):
                 raise ValueError("result is not a pandas DataFrame")
 
-            result = self.result_from_df(self._script_locals["result"])
+            result = self.result_from_df(restricted_globals["result"])
             result["log"] = self._custom_print.lines
             json_data = json_dumps(result)
         except Exception as e:

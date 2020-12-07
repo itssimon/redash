@@ -12,7 +12,7 @@ from redash.query_runner import *
 from redash.utils import json_dumps, json_loads
 from redash import models
 from RestrictedPython import compile_restricted
-from RestrictedPython.Guards import safe_builtins
+from RestrictedPython.Guards import guarded_iter_unpack_sequence, guarded_setattr, safe_builtins, safer_getattr
 
 
 logger = logging.getLogger(__name__)
@@ -291,6 +291,8 @@ class Python(BaseQueryRunner):
                 return int(v)
             elif isinstance(v, np.floating):
                 return float(v)
+            elif isinstance(v, np.bool_):
+                return bool(v)
             elif isinstance(v, pd.Timestamp):
                 return v.to_pydatetime()
             elif isinstance(v, pd.Period):
@@ -321,13 +323,14 @@ class Python(BaseQueryRunner):
             builtins.update({
                 "_write_": self.custom_write,
                 "__import__": self.custom_import,
-                "_getattr_": getattr,
-                "getattr": getattr,
-                "_setattr_": setattr,
-                "setattr": setattr,
+                "_getattr_": safer_getattr,
+                "getattr": safer_getattr,
+                "_setattr_": guarded_setattr,
+                "setattr": guarded_setattr,
                 "_getitem_": self.custom_get_item,
                 "_getiter_": self.custom_get_iter,
                 "_print_": self._custom_print,
+                "_iter_unpack_sequence_": guarded_iter_unpack_sequence,
             })
             builtins.update({name: __builtins__[name] for name in self.safe_builtins})
 

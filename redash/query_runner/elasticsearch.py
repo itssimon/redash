@@ -259,10 +259,32 @@ class ElasticsearchXPackSQL(Elasticsearch):
     def type(cls):
         return "elasticsearch_xpack_sql"
 
+    def run_query(self, query, user) -> Tuple[Dict[str, Any], Optional[str]]:
+        query, url, result_fields = self._build_query(query)
+        response, error = self.get_response(url, http_method='post', json=query)
+        response_data = response.json()
+        data = self._parse_query_results(response_data, result_fields)
+        columns = []
+        while "cursor" in response_data:
+            if "columns" in response_data:
+                columns = response_data["columns"]
+            query, url = self._build_cursor_query(response_data["cursor"])
+            response, _ = self.get_response(url, http_method='post', json=query)
+            response_data = response.json()
+            response_data["columns"] = columns
+            more_data = self._parse_query_results(response_data, result_fields)
+            data["rows"] += more_data["rows"]
+        return json_dumps(data), error
+
     def _build_query(self, query: str) -> Tuple[Dict[str, Any], str, Optional[Set[str]]]:
         sql_query = {'query': query}
         sql_query_url = '/_sql?format=json'
         return sql_query, sql_query_url, None
+
+    def _build_cursor_query(self, cursor: str) -> Tuple[Dict[str, Any], str]:
+        sql_query = {'cursor': cursor}
+        sql_query_url = '/_sql?format=json'
+        return sql_query, sql_query_url
 
     def _parse_query_results(self, result: Dict[str, Any], result_fields: Optional[Set[str]] = None) -> Dict[str, Any]:
         if 'error' in result:
